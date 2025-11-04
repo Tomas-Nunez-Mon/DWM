@@ -156,15 +156,15 @@ const resolvers = {
 
         async addUsuario(obj, { input }) {
             try {
-                // Asegúrate de que 'Usuario' se haya importado correctamente al inicio del archivo
+             
                 const nuevoUsuario = new Usuario(input);
 
-                // Intenta guardar. Si falla por email duplicado, el catch lo manejará.
+              
                 await nuevoUsuario.save(); 
                 
                 return nuevoUsuario;
             } catch (error) {
-                // MUY IMPORTANTE: ¡ESTE MENSAJE ES EL QUE NECESITAS VER EN LA CONSOLA DEL SERVIDOR!
+           
                 console.error("Fallo del servidor al crear usuario:", error); 
                 
                 if (error.code === 11000) { 
@@ -175,7 +175,7 @@ const resolvers = {
                     throw new Error(`Error de validación: ${messages.join(', ')}`);
                 }
                 
-                // Si es otro tipo de error, lanza un mensaje genérico.
+           
                 throw new Error("Error interno al registrar usuario.");
             }
         },
@@ -272,7 +272,6 @@ const resolvers = {
 
 let apolloServer = null;
 const app = express();
-app.use(express.json());
 app.use(cors());
 
 
