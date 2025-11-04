@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio sesion</title>
+    <style>
+        
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center; 
+            align-items: center;     
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+        }
+
+        
+        .wrapper {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            width: 350px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        
+        .input-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+
+        .Recuperacion-contraseña {
+            text-align: right;
+            margin: 10px 0;
+        }
+
+        .Recuperacion-contraseña a {
+            text-decoration: none;
+            color: #007BFF;
+        }
+
+        .Recuperacion-contraseña a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <form id="loginForm">
+            <h1>Inicio sesion</h1>
+
+            <div class="input-box">
+                <input type="email" id="emailLogin" placeholder="Email" required>
+            </div>
+
+            <div class="input-box">
+                <input type="password" id="passLogin" placeholder="Contraseña" required>
+            </div>
+
+            <div class="Recuperacion-contraseña">
+                <a href="Recuperacion contraseña.html">recuperar contraseña</a>
+            </div>
+
+            <button type="submit" class="btn">Iniciar sesion</button>
+            <button type="button" class="btn" onclick="window.location.href='registro usuario.html'">Registrarte</button>
+        </form>
+    </div>
+    <script src="api.js"></script>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault(); 
+
+            const email = document.getElementById('emailLogin').value.trim();
+            const pass = document.getElementById('passLogin').value.trim();
+
+
+            const GET_USUARIOS_QUERY = `
+                query {
+                    getUsuarios {
+                        id
+                        email
+                        pass
+                        isAdmin
+                    }
+                }
+            `;
+
+            try {
+                
+                const data = await graphqlRequest(GET_USUARIOS_QUERY);
+                
+                
+                const usuarioLogueado = data.getUsuarios.find(u => u.email === email && u.pass === pass);
+                
+                if (usuarioLogueado) {
+                    
+                    localStorage.setItem('usuarioId', usuarioLogueado.id);
+                    localStorage.setItem('isAdmin', usuarioLogueado.isAdmin);
+                    localStorage.setItem('usuarioNombre', usuarioLogueado.nombre);
+
+                    alert(' Inicio de sesión exitoso. Bienvenido, ' + usuarioLogueado.nombre);
+
+                    
+                    if (usuarioLogueado.isAdmin) {
+                        window.location.href = 'HubAdmin.html'; 
+                    } else {
+                        window.location.href = 'Catalogo.html'; 
+                    }
+
+                } else {
+                    alert(' Credenciales incorrectas. Verifique Email o Contraseña.');
+                }
+
+            } catch (error) {
+                alert(' Error al intentar iniciar sesión: ' + error.message);
+                console.error('Detalles del error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
+</body>
+
+</html>

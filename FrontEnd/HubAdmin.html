@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración de Pedidos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+
+        #login-screen {
+            display: none; 
+        }
+
+        #admin-panel {
+            max-width: 1300px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        .filtros {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .filtros label, .filtros select, .filtros input {
+            font-size: 1rem;
+        }
+
+        .filtros select, .filtros input {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: #555;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .btn-accion {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-accion:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-accion.cancelar {
+            background-color: #dc3545;
+        }
+        
+        .btn-accion.cancelar:hover {
+            background-color: #c82333;
+        }
+
+        /* Estilos de Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-contenido {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .modal-contenido h3 {
+            color: #007bff;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .modal-contenido ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .cerrar-modal {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+    </div>
+
+    <div id="admin-panel" style="display: none;">
+        <h1>Panel de Administración de Pedidos</h1>
+        
+        <div class="filtros">
+            <label for="filtro-estado">Filtrar por Estado:</label>
+            <select id="filtro-estado">
+                <option value="Todos">Todos</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Enviado">Enviado</option>
+                <option value="Entregado">Entregado</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
+            
+            <label for="filtro-busqueda">Buscar por Cliente/ID:</label>
+            <input type="text" id="filtro-busqueda" placeholder="Nombre o ID de Pedido">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Pedido</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>Dirección (C/N/Coord)</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="lista-pedidos">
+                <tr><td colspan="7">Cargando pedidos...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="modal-detalle" class="modal">
+        <div class="modal-contenido">
+            <span class="cerrar-modal" data-modal="detalle">&times;</span>
+            <div id="detalle-contenido"></div>
+        </div>
+    </div>
+    
+    <script src="api.js"></script>
+    <script>
+        let pedidosData = [];
+        let usuarioAdmin = null;
+
+        const loginScreen = document.getElementById('login-screen');
+        const adminPanel = document.getElementById('admin-panel');
+        const listaPedidos = document.getElementById('lista-pedidos');
+        const filtroEstado = document.getElementById('filtro-estado');
+        const filtroBusqueda = document.getElementById('filtro-busqueda');
+        
+        const modalDetalle = document.getElementById('modal-detalle');
+        const detalleContenido = document.getElementById('detalle-contenido');
+        const botonesCerrar = document.querySelectorAll('.cerrar-modal');
+
+        const GET_PEDIDOS_QUERY = `
+            query GetPedidos {
+                getPedidos {
+                    id
+                    clienteId
+                    clienteNombre
+                    total
+                    estado
+                    fecha
+                    direccion {
+                        calle
+                        numero
+                        lat
+                        lon
+                    }
+                    items {
+                        nombre
+                        cantidad
+                        precioUnitario
+                    }
+                }
+            }
+        `;
+
+        const CAMBIAR_ESTADO_MUTATION = `
+            mutation CambiarEstado($id: ID!, $estado: String!) {
+                cambiarEstadoPedido(id: $id, estado: $estado) {
+                    id
+                    estado
+                }
+            }
+        `;
+
+        function verificarAutenticacion() {
+            const id = localStorage.getItem('usuarioId');
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            
+            if (!id || !isAdmin) {
+                alert("Acceso denegado. Se requiere ser Administrador.");
+                window.location.href = 'Inicio sesion.html';
+            } else {
+                usuarioAdmin = { id, isAdmin };
+                adminPanel.style.display = 'block';
+                cargarPedidos();
+            }
+        }
+
+        async function cargarPedidos() {
+            try {
+                const data = await graphqlRequest(GET_PEDIDOS_QUERY);
+                pedidosData = data.getPedidos;
+                renderizarPedidos();
+            } catch (error) {
+                listaPedidos.innerHTML = '<tr><td colspan="7">Error al cargar la lista de pedidos.</td></tr>';
+            }
+        }
+
+        function getEstadoBadge(estado) {
+            let color = '';
+            switch (estado) {
+                case 'Pendiente': color = '#ffc107'; break; 
+                case 'Enviado': color = '#17a2b8'; break;   
+                case 'Entregado': color = '#28a745'; break; 
+                case 'Cancelado': color = '#dc3545'; break; 
+                default: color = '#6c757d'; 
+            }
+            return `<span style="background-color: ${color}; color: white; padding: 4px 8px; border-radius: 4px;">${estado}</span>`;
+        }
+
+        function renderizarPedidos() {
+            listaPedidos.innerHTML = '';
+            const estadoFiltro = filtroEstado.value;
+            const busqueda = filtroBusqueda.value.toLowerCase();
+            
+            const pedidosFiltrados = pedidosData.filter(pedido => {
+                const coincideEstado = estadoFiltro === 'Todos' || pedido.estado === estadoFiltro;
+                const coincideBusqueda = pedido.clienteNombre.toLowerCase().includes(busqueda) || pedido.id.toLowerCase().includes(busqueda);
+                return coincideEstado && coincideBusqueda;
+            });
+
+            let html = '';
+            if (pedidosFiltrados.length === 0) {
+                html += '<tr><td colspan="7">No hay pedidos que coincidan con los filtros.</td></tr>';
+            } else {
+                pedidosFiltrados.forEach(pedido => {
+                    const { id, clienteNombre: nombreCliente, estado, fecha: fechaISO } = pedido;
+                    
+                    const fecha = new Date(fechaISO).toLocaleDateString('es-CL');
+                    const direccionDisplay = `${pedido.direccion.calle} ${pedido.direccion.numero} (${pedido.direccion.lat.toFixed(4)}, ${pedido.direccion.lon.toFixed(4)})`;
+
+                    let acciones = `<button class="btn-accion" onclick='verDetalle(${JSON.stringify(pedido)})'>Ver Detalle</button>`;
+                    
+                    if (estado === 'Pendiente') {
+                        acciones += `<button class="btn-accion" onclick="cambiarEstado('${id}', 'Enviado')">Enviar Pedido</button>`;
+                    } else if (estado === 'Enviado') {
+                        acciones += `<button class="btn-accion" onclick="cambiarEstado('${id}', 'Entregado')">Finalizar Entrega</button>`;
+                    } else if (estado === 'Entregado') {
+                        acciones += `<span>Completado</span>`;
+                    }
+                    
+                    if (estado !== 'Cancelado' && estado !== 'Entregado') {
+                         acciones += `<button class="btn-accion cancelar" onclick="cambiarEstado('${id}', 'Cancelado')">Cancelar</button>`;
+                    }
+
+                    html += `
+                        <tr>
+                            <td>${id.slice(-6)}</td>
+                            <td>${nombreCliente}</td>
+                            <td>$${pedido.total.toLocaleString('es-CL')}</td>
+                            <td>${direccionDisplay}</td>
+                            <td>${getEstadoBadge(estado)}</td>
+                            <td>${fecha}</td>
+                            <td>${acciones}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            listaPedidos.innerHTML = html;
+        }
+        
+        function verDetalle(pedido) {
+            let itemsHtml = pedido.items.map(item => 
+                `<li>${item.nombre} x ${item.cantidad} ($${item.precioUnitario.toLocaleString('es-CL')} c/u)</li>`
+            ).join('');
+
+            detalleContenido.innerHTML = `
+                <h3>Detalle del Pedido #${pedido.id.slice(-6)}</h3>
+                <p><strong>Cliente:</strong> ${pedido.clienteNombre}</p>
+                <p><strong>Estado:</strong> ${getEstadoBadge(pedido.estado)}</p>
+                <p><strong>Total:</strong> $${pedido.total.toLocaleString('es-CL')}</p>
+                <p><strong>Dirección:</strong> ${pedido.direccion.calle} ${pedido.direccion.numero}</p>
+                <p><strong>Coordenadas:</strong> (${pedido.direccion.lat.toFixed(4)}, ${pedido.direccion.lon.toFixed(4)})</p>
+                <p><strong>Fecha:</strong> ${new Date(pedido.fecha).toLocaleString('es-CL')}</p>
+                <h4>Items:</h4>
+                <ul>${itemsHtml}</ul>
+            `;
+            modalDetalle.style.display = 'flex';
+        }
+
+        async function cambiarEstado(id, nuevoEstado) {
+            if (!confirm(`¿Seguro que desea cambiar el estado del pedido #${id.slice(-6)} a "${nuevoEstado}"?`)) {
+                return;
+            }
+
+            try {
+                const variables = { id, estado: nuevoEstado };
+                await graphqlRequest(CAMBIAR_ESTADO_MUTATION, variables);
+                
+                alert(`Estado del pedido #${id.slice(-6)} actualizado a "${nuevoEstado}".`);
+                await cargarPedidos(); 
+
+            } catch (error) {
+                alert('Error al actualizar el estado: ' + error.message);
+            }
+        }
+
+        filtroEstado.addEventListener('change', renderizarPedidos);
+        filtroBusqueda.addEventListener('input', renderizarPedidos);
+
+        botonesCerrar.forEach(boton => {
+            boton.addEventListener("click", () => {
+                 modalDetalle.style.display = 'none';
+            });
+        });
+
+        window.addEventListener("click", e => {
+            if (e.target === modalDetalle) modalDetalle.style.display = 'none';
+        });
+        
+        verificarAutenticacion();
+    </script>
+</body>
+</html>
