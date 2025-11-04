@@ -281,9 +281,12 @@ async function startServer(){
     await apolloServer.start();
     apolloServer.applyMiddleware({app, path: '/graphql'});
 }
-startServer();
 
-const PORT = 4000;
-app.listen(PORT,() => {
-    console.log(` Servidor listo en http://localhost:${PORT}${apolloServer.graphqlPath}`);
+
+    const PORT = 4000;
+    app.listen(PORT,() => {
+        console.log(` Servidor listo en http://localhost:${PORT}${apolloServer.graphqlPath}`);
+    });
+startServer().catch((error) => {
+    console.error('Error al iniciar el servidor Apollo:', error);
 });
