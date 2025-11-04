@@ -1,8 +1,9 @@
-const express = require('express');
 const mongoose = require('mongoose');
+const express = require('express');
+const {ApolloServer, gql} = require('apollo-server-express');
 const cors = require('cors');
 
-const {ApolloServer, gql} = require('apollo-server-express');
+
 const Usuario = require('./models/usuario');
 const Producto = require("./models/producto");
 const Pedido = require("./models/pedido");
@@ -12,119 +13,129 @@ function calcularDistancia(coord1, coord2) {
     const R = 6371;
     const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
     const dLon = (coord2.lon - coord1.lon) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    const lat1 = coord1.lat * Math.PI / 180;
+    const lat2 = coord2.lat * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 
+            + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
 
-mongoose.connect('mongodb://localhost:27017/tarea DWM')
+mongoose.connect('mongodb://localhost:27017/tarea_dwm')
     .then(() => console.log("Conectado a MongoDB"))
     .catch(err => console.error("Error de conexion a MongoDB:", err.message));
 
 const typeDefs = gql`
-type Producto {
-    id: ID!
-    nombre: String!
-    precio: Float!
-    stock: Int!
-    descripcion: String
-    imagenURL: String
-}
-input ProductoInput {
-    nombre: String
-    precio: Float
-    stock: Int
-    descripcion: string
-    imagenURL: String
-}
+    type Usuario{
+        id: ID!
+        nombre: String
+        email: String
+        pass: String
+        isAdmin: Boolean
+    }
+    input UsuarioInput{
+        nombre: String!
+        email: String!
+        pass: String!
+        isAdmin: Boolean
+    }
 
-type Usuario{
-    id: ID!
-    nombre: String!
-    email: String!
-    pass: String!
-    isAdmin: Boolean
-}
-input UsuarioInput{
-    nombre: String!
-    email: String!
-    pass: String!
-}
 
-type ItemPedido {
-    nombre: String! 
-    cantidad: Int!
-    precioUnitario: Float!
-}
-input ItemPedidoInput {
-    productoId: ID!
-    cantidad: Int!
-}
-type Direccion {
-    calle: String!
-    numero: String!
-    lat: Float!
-    lon: Float!
-}
-input DireccionInput {
-    calle: String!
-    numero: String!
-    lat: Float!
-    lon: Float!
-}
+    type Producto {
+        id: ID!
+        nombre: String
+        precio: Float
+        stock: Int
+        descripcion: String
+        imagenURL: String
+    }
+    input ProductoInput {
+        nombre: String
+        precio: Float
+        stock: Int
+        descripcion: String
+        imagenURL: String
+    }
 
-type Pedido {
-    id: ID!
-    clienteId: String!
-    clienteNombre: String!
-    total: Float!
-    estado: String!
-    fecha: String!
-    direccion: Direccion! 
-    items: [ItemPedido!]!
-}
 
-type Response{
-    status: String
-    message: String
-}
+    type Direccion {
+        calle: String
+        numero: String
+        lat: Float
+        lon: Float
+    }
+    input DireccionInput {
+        calle: String!
+        numero: String!
+        lat: Float!
+        lon: Float!
+    }        
 
-type Query{
-    getUsuarios: [Usuario]
-    getUsuarioById(id: ID!): Usuario
-    
-    getProductos: [Producto]
-    getProductoById(id: ID!): Producto
-    
-    getPedidos: [Pedido] 
-}
 
-type Mutation{
-    addUsuario(input: UsuarioInput!): Usuario!
-    updUsuario(id: ID!, input: UsuarioInput): Usuario
-    delUsuario(id: ID!): Response
+    type ItemPedido {
+        productoId: ID
+        nombre: String
+        cantidad: Int
+        precioUnitario: Float
+    }
+    input ItemPedidoInput {
+        productoId: ID!
+        cantidad: Int!
+    }
 
-    addProductos(input: ProductoInput): Producto
-    updProducto(id: ID!, input: ProductoInput): Producto
-    delProducto(id: ID!): Response
 
-    crearPedido(
-        clienteId: ID!,
-        clienteNombre: String!,
-        direccion: DireccionInput!,
-        items: [ItemPedidoInput!]!
-    ): Pedido
-    
-    cambiarEstadoPedido(id: ID!, estado: String!): Pedido 
-}
+    type Pedido {
+        id: ID!
+        clienteId: ID
+        clienteNombre: String
+        total: Float
+        estado: String
+        fecha: String
+        direccion: Direccion!
+        items: [ItemPedido!]!
+    }
+
+    type Response{
+        status: String
+        message: String
+    }
+
+    type Query{
+        getUsuarios: [Usuario]!
+        getUsuarioById(id: ID!): Usuario
+        
+        getProductos: [Producto]!
+        getProductoById(id: ID!): Producto
+        
+        getPedidos: [Pedido]!
+    }
+
+    type Mutation{
+        addUsuario(input: UsuarioInput!): Usuario!
+        updUsuario(id: ID!, input: UsuarioInput): Usuario
+        delUsuario(id: ID!): Response
+
+        addProducto(input: ProductoInput): Producto!
+        updProducto(id: ID!, input: ProductoInput): Producto
+        delProducto(id: ID!): Response
+
+        crearPedido(
+            clienteId: ID!,
+            clienteNombre: String!,
+            direccion: DireccionInput!,
+            items: [ItemPedidoInput!]!
+        ): Pedido!
+        
+        cambiarEstadoPedido(id: ID!, estado: String!): Pedido 
+    }
 `;
 
 const resolvers = {
     Pedido: {
-        fecha: (pedido) => pedido.fechaPedido.toISOString(),
+        fecha: (pedido) => pedido.fechaPedido ? pedido.fechaPedido.toISOString(): null,
         direccion: (pedido) => pedido.direccionEnvio,
         items: (pedido) => pedido.items.map(item => ({
-            nombre: item.nombreProducto, 
+            nombre: item.nombre ?? item.nombreProducto, 
             cantidad: item.cantidad,
             precioUnitario: item.precioUnitario
         }))
@@ -191,7 +202,7 @@ const resolvers = {
             }
         },
 
-        async addProductos(obj, {input}) {
+        async addProducto(obj, {input}) {
             const producto = new Producto(input);
             await producto.save();
             return producto;
@@ -216,41 +227,36 @@ const resolvers = {
 
             let totalPedido = 0;
             const itemsDetalle = [];
-
-            for (const itemInput of itemsInput) {
-                const productoDB = await Producto.findById(itemInput.productoId);
+            for (const item of itemsInput) {
+                const productoDB = await Producto.findById(item.productoId);
+                if(!productoDB) throw new Error('Producto no encontrado');
+                if (item.cantidad <= 0) throw new Error('Cantidad invalida');
+                if (productoDB.stock < item.cantidad) {
+                    throw new Error(`Stock insuficiente para ${productoDB.nombre}`);
+                }
                 
-                if (!productoDB) {
-                    throw new Error(`Producto con ID ${itemInput.productoId} no encontrado.`);
-                }
-                if (productoDB.stock < itemInput.cantidad) {
-                    throw new Error(`Stock insuficiente para ${productoDB.nombre}. Stock actual: ${productoDB.stock}`);
-                }
-
-                productoDB.stock -= itemInput.cantidad;
-                await productoDB.save(); 
-
-                const subtotal = productoDB.precio * itemInput.cantidad;
-                totalPedido += subtotal;
-
+                productoDB.stock -= item.cantidad;
+                await productoDB.save();
+                
                 itemsDetalle.push({
                     productoId: productoDB._id,
                     nombreProducto: productoDB.nombre,
-                    cantidad: itemInput.cantidad,
+                    cantidad: item.cantidad,
                     precioUnitario: productoDB.precio
                 });
+                totalPedido += productoDB.precio * item.cantidad;
             }
             
-            const nuevoPedido = new Pedido({
+            const nuevoPedido = await Pedido.create({
                 clienteId,
                 clienteNombre,
+                direccionEnvio: direccion,
                 items: itemsDetalle,
                 total: totalPedido,
-                direccionEnvio: direccion,
                 estado: 'Pendiente', 
             });
             
-            await nuevoPedido.save();
+            
             return nuevoPedido;
         },
         
@@ -275,18 +281,19 @@ const app = express();
 app.use(cors());
 
 
-
 async function startServer(){
     apolloServer = new ApolloServer({typeDefs, resolvers});
     await apolloServer.start();
     apolloServer.applyMiddleware({app, path: '/graphql'});
 }
-
-
     const PORT = 4000;
-    app.listen(PORT,() => {
-        console.log(` Servidor listo en http://localhost:${PORT}${apolloServer.graphqlPath}`);
+
+startServer()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor listo en http://localhost:${PORT}${apolloServer.graphqlPath}`);
     });
-startServer().catch((error) => {
+  })
+  .catch((error) => {
     console.error('Error al iniciar el servidor Apollo:', error);
-});
+  });

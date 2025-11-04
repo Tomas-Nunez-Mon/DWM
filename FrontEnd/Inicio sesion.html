@@ -88,7 +88,7 @@
             </div>
 
             <button type="submit" class="btn">Iniciar sesion</button>
-            <button type="button" class="btn" onclick="window.location.href='registro usuario.html'">Registrarte</button>
+            <button type="button" class="btn" onclick="window.location.href='Registro usuario.html'">Registrarte</button>
         </form>
     </div>
     <script src="api.js"></script>
@@ -107,6 +107,7 @@
                 query {
                     getUsuarios {
                         id
+                        nombre
                         email
                         pass
                         isAdmin
@@ -118,11 +119,9 @@
                 
                 const data = await graphqlRequest(GET_USUARIOS_QUERY);
                 
-                
-                const usuarioLogueado = data.getUsuarios.find(u => u.email === email && u.pass === pass);
+                const usuarioLogueado = data.getUsuarios.find(u => u.email?.toLowerCase() === email.toLowerCase() && u.pass === pass);
                 
                 if (usuarioLogueado) {
-                    
                     localStorage.setItem('usuarioId', usuarioLogueado.id);
                     localStorage.setItem('isAdmin', usuarioLogueado.isAdmin);
                     localStorage.setItem('usuarioNombre', usuarioLogueado.nombre);
@@ -147,7 +146,4 @@
         });
     </script>
 </body>
-</html>
-</body>
-
 </html>
