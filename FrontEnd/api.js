@@ -1,40 +1,51 @@
-const GRAPHQL_ENDPOINT = "http://localhost:4000/graphql"; 
 
-/**
- * @param {String} queryOrMutation
- * @param {object} variables
- * @returns {Promise<object>}
- */
-async function graphqlRequest(queryOrMutation, variables = {}){
-    try {
-        const response = await fetch(GRAPHQL_ENDPOINT, {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json",
-            },
-            body: JSON.stringify({
-                query: queryOrMutation,
-                variables: variables,
-            }),
-        });
+const GRAPHQL_URL = 'http://localhost:4000/graphql';
 
-        if (!response.ok){
-            
-            const errorBody = await response.json().catch(() => ({}));
-            const errorMessage = errorBody.errors ? errorBody.errors.map(e => e.message).join('; ') : response.statusText;
-            throw new Error(`Error HTTP ${response.status}: ${errorMessage}`);
-        }
-        
-        const result = await response.json();
-        
-        
-        if (result.errors) {
-            throw new Error(result.errors.map(e => e.message).join('; '));
-        }
-        
-        return result.data; 
-    } catch (error){
-        console.error("Error en la peticion de GraphQL:", error);
-        throw error;
+
+async function graphqlRequest(query, variables = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000); 
+
+  try {
+    const res = await fetch(GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ query, variables }),
+      mode: 'cors',
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+
+      let msg = `HTTP ${res.status}`;
+      try {
+        const t = await res.text();
+        if (t) msg += ` - ${t}`;
+      } catch {}
+      throw new Error(`Error de red: ${msg}`);
     }
+
+    const payload = await res.json();
+
+    if (payload.errors && payload.errors.length) {
+
+      throw new Error(payload.errors.map(e => e.message).join(' | '));
+    }
+
+    return payload.data;
+  } catch (err) {
+
+    if (err.name === 'AbortError') {
+      throw new Error('La solicitud excedió el tiempo de espera');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
+
+
+window.graphqlRequest = graphqlRequest;
