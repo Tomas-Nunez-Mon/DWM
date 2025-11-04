@@ -28,11 +28,14 @@ type Producto {
     precio: Float!
     stock: Int!
     descripcion: String
+    imagenURL: String
 }
 input ProductoInput {
-    nombre: String!
-    precio: Float!
-    stock: Int!
+    nombre: String
+    precio: Float
+    stock: Int
+    descripcion: string
+    imagenURL: String
 }
 
 type Usuario{
