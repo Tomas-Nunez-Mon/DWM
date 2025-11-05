@@ -123,8 +123,15 @@
                 
                 if (usuarioLogueado) {
                     localStorage.setItem('usuarioId', usuarioLogueado.id);
-                    localStorage.setItem('isAdmin', usuarioLogueado.isAdmin);
+                    localStorage.setItem('isAdmin', String(!!usuarioLogueado.isAdmin));
                     localStorage.setItem('usuarioNombre', usuarioLogueado.nombre);
+                    
+                    
+                    console.log('[LOGIN] guardado en localStorage', {
+                        usuarioId: localStorage.getItem('usuarioId'),
+                        isAdmin: localStorage.getItem('isAdmin'),
+                        usuarioNombre: localStorage.getItem('usuarioNombre')
+                        });
 
                     alert(' Inicio de sesión exitoso. Bienvenido, ' + usuarioLogueado.nombre);
 

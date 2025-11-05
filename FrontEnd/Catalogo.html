@@ -254,6 +254,23 @@
     </style>
 </head>
 <body>
+    <script>
+       (function ensureSession(){
+            const uid = localStorage.getItem('usuarioId') || localStorage.getItem('userId');
+            const name = localStorage.getItem('usuarioNombre') || localStorage.getItem('userName');
+            const isAdminRaw = localStorage.getItem('isAdmin');
+            const isAdmin = isAdminRaw === 'true' || isAdminRaw === true;
+
+            console.log('[SESSION] usuarioId=', uid, 'nombre=', name, 'isAdmin=', isAdminRaw);
+            const isAdminPage = location.pathname.toLowerCase().includes('hubadmin.html')
+
+            if (!uid){
+                console.warn('[SESSION] No es admin, regreso a login');
+                window.location.replace('Inicio sesion.html');
+                return;
+            }
+        })();
+    </script>
 
     <header>
         <h1>Catálogo de Productos</h1>
