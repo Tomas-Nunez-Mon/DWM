@@ -499,50 +499,53 @@
             modalDireccion.style.display = "flex";
         });
 
-        formDireccion.addEventListener("submit", async function(e) {
-            e.preventDefault();
+        function buildAddressFromInputs() {
+            const calle  = (document.getElementById('calleInput')?.value || '').trim();
+            const numero = (document.getElementById('numeroInput')?.value || '').trim();
+            const ciudad = (document.getElementById('ciudadInput')?.value || '').trim();
+            const partes = [];
+            if (calle) partes.push(calle);
+            if (numero) partes.push(numero);
+            if (ciudad) partes.push(ciudad);
+            partes.push('Chile');
+            return partes.join(', ');
+        }
 
-            const calle = document.getElementById('calleInput').value.trim();
-            const numero = document.getElementById('numeroInput').value.trim();
-            const lat = parseFloat(document.getElementById('latInput').value.trim());
-            const lon = parseFloat(document.getElementById('lonInput').value.trim());
-            
-            if (isNaN(lat) || isNaN(lon)) {
-                 alert("Las coordenadas (Latitud y Longitud) deben ser números válidos.");
-                 return;
-            }
+        async function geocodeDireccion(query) {
+            const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=cl&q='
+            + encodeURIComponent(query);
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error('Geocoder HTTP ' + res.status);
+            const data = await res.json();
+            if (!Array.isArray(data) || data.length === 0) return null;
+            return {
+            lat: Number(data[0].lat),
+            lon: Number(data[0].lon),
+            label: data[0].display_name
+            };
+        }
 
-            const itemsInput = carrito.map(item => ({
-                productoId: item.id,
-                cantidad: item.cantidad
-            }));
-            
-            const direccionInput = { calle, numero, lat, lon };
-            
-            try {
-                const variables = {
-                    clienteId: usuarioLogueado.id,
-                    clienteNombre: usuarioLogueado.nombre,
-                    direccion: direccionInput,
-                    items: itemsInput
-                };
+        async function ensureCoordsFromAddress() {
+            const latEl = document.getElementById('latInput');
+            const lonEl = document.getElementById('lonInput');
 
-                const data = await graphqlRequest(CREAR_PEDIDO_MUTATION, variables);
-                
-                pedidoIdActual = data.crearPedido.id;
-                modalDireccion.style.display = "none";
-                mostrarResumen(data.crearPedido.id, data.crearPedido.total);
+            let lat = parseFloat((latEl?.value || '').trim());
+            let lon = parseFloat((lonEl?.value || '').trim());
 
-                carrito = [];
-                localStorage.removeItem('carrito');
-                actualizarCarrito();
-                cargarProductos(); 
+            const tieneCoordsValidas = Number.isFinite(lat) && Number.isFinite(lon);
+            if (tieneCoordsValidas) return { lat, lon };
 
-            } catch (error) {
-                alert('Error al crear el pedido: ' + error.message);
-                cargarProductos();
-            }
-        });
+            const query = buildAddressFromInputs();
+            if (!query) throw new Error('Completa calle y número para obtener coordenadas.');
+
+            const geo = await geocodeDireccion(query);
+            if (!geo) throw new Error('No se encontraron coordenadas para esa dirección. Intenta agregar ciudad/comuna.');
+
+            if (latEl) latEl.value = geo.lat.toFixed(6);
+            if (lonEl) lonEl.value = geo.lon.toFixed(6);
+
+            return { lat: geo.lat, lon: geo.lon };
+        }   
 
         function mostrarResumen(pedidoId, total) {
             const itemsHtml = carrito.map(item => 
@@ -592,6 +595,55 @@
         verificarAutenticacion();
         cargarProductos();
         actualizarCarrito();
+    </script>
+    <script>
+        formDireccion.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const calle = document.getElementById('calleInput').value.trim();
+            const numero = document.getElementById('numeroInput').value.trim();
+
+            let lat, lon;
+            try {
+            const coords = await ensureCoordsFromAddress();
+            lat = coords.lat;
+            lon = coords.lon;
+            } catch (err) {
+            alert(err.message);
+            return;
+            }
+
+            const itemsInput = carrito.map(item => ({
+            productoId: item.id,
+            cantidad: item.cantidad
+            }));
+
+            const direccionInput = { calle, numero, lat, lon };
+
+            try {
+            const variables = {
+                clienteId: usuarioLogueado.id,
+                clienteNombre: usuarioLogueado.nombre,
+                direccion: direccionInput,
+                items: itemsInput
+            };
+
+            const data = await graphqlRequest(CREAR_PEDIDO_MUTATION, variables);
+
+            pedidoIdActual = data.crearPedido.id;
+            modalDireccion.style.display = "none";
+            mostrarResumen(data.crearPedido.id, data.crearPedido.total);
+
+            carrito = [];
+            localStorage.removeItem('carrito');
+            actualizarCarrito();
+            cargarProductos();
+
+            } catch (error) {
+            alert('Error al crear el pedido: ' + error.message);
+            cargarProductos();
+            }
+        });
     </script>
 </body>
 </html>
