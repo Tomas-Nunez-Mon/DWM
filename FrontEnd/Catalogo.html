@@ -265,7 +265,7 @@
             const isAdminPage = location.pathname.toLowerCase().includes('hubadmin.html')
 
             if (!uid){
-                console.warn('[SESSION] No es admin, regreso a login');
+                console.warn('[SESSION] No hay sesión, regreso a login');
                 window.location.replace('Inicio sesion.html');
                 return;
             }
@@ -304,10 +304,13 @@
                 <label for="numeroInput">Número:</label>
                 <input type="text" id="numeroInput" required>
 
+                <label for="ciudadInput">Ciudad / Comuna (opcional):</label>
+                <input type="text" id="ciudadInput" placeholder="Comuna o ciudad">
+
                 <label>Coordenadas (Lat/Lon):</label>
                 <div class="coordenadas-input">
-                    <input type="number" id="latInput" placeholder="Latitud" step="0.0001" required>
-                    <input type="number" id="lonInput" placeholder="Longitud" step="0.0001" required>
+                    <input type="number" id="latInput" placeholder="Latitud" step="0.000001" readonly>
+                    <input type="number" id="lonInput" placeholder="Longitud" step="0.000001" readonly>
                 </div>
                 
                 <button type="submit">Continuar al Pago</button>
@@ -414,7 +417,7 @@
                 const div = document.createElement('div');
                 div.className = 'producto';
                 div.innerHTML = `
-                    <img src="${producto.imagenURL || 'placeholder.png'}" alt="${producto.nombre}">
+                    <img src="${producto.imagenURL || 'https://picsum.photos/seed/placeholder/600/400'}" alt="${producto.nombre}">
                     <h3>${producto.nombre}</h3>
                     <p>$${producto.precio.toLocaleString('es-CL')}</p>
                     <p class="stock">Stock: ${producto.stock}</p>

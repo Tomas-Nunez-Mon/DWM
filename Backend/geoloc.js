@@ -5,7 +5,7 @@ const TIENDA_COORDENADAS = {
 };
 
 
-const RADIO_MAXIMO_KM = 3;
+const RADIO_MAXIMO_KM = 9;
 
 module.exports = {
     TIENDA_COORDENADAS,
